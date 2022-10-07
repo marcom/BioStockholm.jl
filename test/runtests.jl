@@ -1,5 +1,5 @@
 using Test
-using BioStockholm: parse_stockholm, print_stockholm
+using BioStockholm
 
 # TODO
 # - test that correct data is stored
@@ -7,29 +7,29 @@ using BioStockholm: parse_stockholm, print_stockholm
 # example_sto1, example_sto2
 include("example_data.jl")
 
-@testset "parse_stockholm" begin
-    for sto in [example_sto1, example_sto2]
-        s, gf, gc, gs, gr = parse_stockholm(sto)
-        @test length(s) > 0
+@testset "parse" begin
+    for sto_str in [example_sto1, example_sto2]
+        sto = parse(Stockholm, sto_str)
+        @test length(sto.seq) > 0
     end
 end
 
-@testset "print_stockholm" begin
-    gf  = Dict("FOO"    => "some text",
-               "BARBAZ" => "some more text")
-    gs  = Dict("Seq1/1.1"  => Dict("Prop1"     => "some text for property"),
-               "Seq2/2.11" => Dict("Property2" => "even more text"))
-
-    seq = Dict("Seq1/1.1"                   => "GGGAAACCC",
-               "Seq2/2.11"                  => "UUGAGACCA")
-    gr  = Dict("Seq1/1.1"  => Dict("foo"    => "EEGHHHEEC",
-                                   "barbaz" => "...---..."),
-               "Seq2/2.11" => Dict("foo"    => "HHEEEEECE"))
-    gc  = Dict("FOO"                        => "(((...)))",
-               "FOOBAR"                     => "+--...--+")
-
+@testset "print" begin
+    sto = Stockholm{String}(;
+        GF  = Dict("FOO"    => "some text",
+                   "BARBAZ" => "some more text"),
+        GS  = Dict("Seq1/1.1"  => Dict("Prop1"     => "some text for property"),
+                   "Seq2/2.11" => Dict("Property2" => "even more text")),
+        seq = Dict("Seq1/1.1"                   => "GGGAAACCC",
+                   "Seq2/2.11"                  => "UUGAGACCA"),
+        GR  = Dict("Seq1/1.1"  => Dict("foo"    => "EEGHHHEEC",
+                                       "barbaz" => "...---..."),
+                   "Seq2/2.11" => Dict("foo"    => "HHEEEEECE")),
+        GC  = Dict("FOO"                        => "(((...)))",
+                   "FOOBAR"                     => "+--...--+")
+    )
     iobuf = IOBuffer()
-    print_stockholm(iobuf; seq, gf, gc, gs, gr)
+    print(iobuf, sto)
     out = String(take!(iobuf))
     @test length(out) > 0
 end
