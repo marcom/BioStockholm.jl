@@ -132,4 +132,53 @@ const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
     return sequences, gf_records, gc_records, gs_records, gr_records
 end
 
+function print_stockholm(io::IO=stdout;
+                         seq::Dict{String,String}=Dict{String,String}(),
+                         gf::Dict{String,String}=Dict{String,String}(),
+                         gc::Dict{String,String}=Dict{String,String}(),
+                         gs::Dict{String,Dict{String,String}}=Dict{String,Dict{String,String}}(),
+                         gr::Dict{String,Dict{String,String}}=Dict{String,Dict{String,String}}(),
+                         )
+    # TODO: split long lines
+
+    println(io, "# STOCKHOLM 1.0")
+    # gf: feature => text
+    max_len = maximum(length(f) for (f,_) in gf)
+    for (feature, text) in gf
+        indent = repeat(" ", max_len - length(feature))
+        println(io, "#=GF $feature    $(indent)$(text)")
+    end
+    # gs: seqname => feature => text
+    max_len = maximum(length(sn) + length(f) for (sn,f2t) in gs for (f,_) in f2t; init=0)
+    for (seqname, feature_to_text) in gs
+        for (feature, text) in feature_to_text
+            indent = repeat(" ", max_len - (length(seqname) + length(feature)))
+            println(io, "#=GS $seqname $feature    $(indent)$(text)")
+        end
+    end
+    max_len = max(
+        maximum(length(sn) for (sn,_) in seq; init=0),
+        maximum(length(sn) + length(f) + 1 for (sn,f2t) in gr for (f,_) in f2t; init=0),
+        maximum(length(f) for (f,_) in gc; init=0)
+    )
+    # seq: seqname => aligned_seq
+    for (seqname, s) in seq
+        indent = repeat(" ", max_len - length(seqname) + 5)  # + 5 for missing "#=GX "
+        println(io, "$seqname    $(indent)$(s)")
+        # gr: seqname => feature => aligned_seq
+        if haskey(gr, seqname)
+            for (feature, r) in gr[seqname]
+                indent = repeat(" ", max_len - (length(seqname) + length(feature) + 1))
+                println(io, "#=GR $seqname $feature    $(indent)$(r)")
+            end
+        end
+    end
+    # gc: feature => aligned_seq
+    for (feature, c) in gc
+        indent = repeat(" ", max_len - length(feature))
+        println(io, "#=GC $feature    $(indent)$(c)")
+    end
+    println(io, "//")
+end
+
 end # module BioStockholm
