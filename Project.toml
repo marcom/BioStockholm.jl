@@ -2,3 +2,12 @@ name = "BioStockholm"
 uuid = "eeb925a3-6f9d-43e6-829e-e0ea03b76ecf"
 authors = ["Marco Matthies <marco.matthies@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+Automa = "67c07d97-cdcb-5c2c-af73-a7f9c32a568b"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
