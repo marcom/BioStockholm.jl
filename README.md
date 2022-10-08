@@ -21,16 +21,20 @@ to install it from github by typing this into the Julia REPL:
 ```julia
 using BioStockholm
 
+# example2.sto contains an example Stockholm file
 sto_path = joinpath(dirname(pathof(BioStockholm)), "..",
                     "test", "example2.sto")
 sto_str = read(sto_path, String)
 print(sto_str)
 
+# read from a file or parse from a String
 sto = read(sto_path, Stockholm)
 sto = parse(Stockholm, sto_str)
 
+# write to a file
 write("foobar.sto", sto)
 
+# pretty-print
 print(sto)
 print(stdout, sto)
 ```
