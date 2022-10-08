@@ -10,8 +10,7 @@ export Stockholm
 # - collect data as Vector{Char} or Vector{UInt8} instead of as String?
 #   - avoids excessive string concatenation
 
-# Notes on Automa
-# - automatic vars (from Automa.generate_init_code())
+# Automa automatic vars (from Automa.generate_init_code())
 #   - p: index into data currently being read
 #   - cs: current state of state machine (FSM), 0 is accept, 1 is start
 #   - p_end
@@ -48,6 +47,14 @@ Base.@kwdef struct Stockholm{Tseq}
     # ** incremental compilation may be fatally broken for this module
     # **
     Stockholm() = Stockholm{String}()
+end
+
+function Base.:(==)(s1::Stockholm, s2::Stockholm)
+    return (s1.seq == s2.seq
+            && s1.GF == s2.GF
+            && s1.GS == s2.GS
+            && s1.GC == s2.GC
+            && s1.GR == s2.GR)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sto::Stockholm)
@@ -157,6 +164,22 @@ const stockholm_actions = Dict(
         sequences[seqname] = get(sequences, seqname, "") * aligned_seq
     ),
 )
+
+Base.read(io::IO, ::Type{Stockholm}) = parse(Stockholm, read(io, String))
+
+function Base.read(filepath::AbstractString, ::Type{Stockholm})
+    open(filepath) do io
+        read(io, Stockholm)
+    end
+end
+
+Base.write(io::IO, sto::Stockholm) = print(io, sto)
+
+function Base.write(filepath::AbstractString, sto::Stockholm)
+    open(filepath, "w") do io
+        print(io, sto)
+    end
+end
 
 Base.parse(::Type{Stockholm}, data::Union{String,Vector{UInt8}}) =
     parse_stockholm(data)

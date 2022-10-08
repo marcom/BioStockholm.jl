@@ -33,3 +33,30 @@ end
     out = String(take!(iobuf))
     @test length(out) > 0
 end
+
+@testset "write" begin
+    sto = parse(Stockholm, example_sto1)
+
+    mktemp() do path, io
+        write(io, sto)
+        close(io)
+        @test isfile(path)
+        @test filesize(path) > 0
+    end
+
+    mktemp() do path, io
+        write(path, sto)
+        @test isfile(path)
+        @test filesize(path) > 0
+    end
+end
+
+@testset "read" begin
+    sto = parse(Stockholm, example_sto1)
+
+    mktemp() do path, io
+        write(path, sto)
+        sto_read = read(path, Stockholm)
+        @test sto_read == sto
+    end
+end
