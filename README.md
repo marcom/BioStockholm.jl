@@ -21,12 +21,16 @@ to install it from github by typing this into the Julia REPL:
 ```julia
 using BioStockholm
 
-sto_path = joinpath(pathof(BioStockholm), "test", "exampe2.sto")
+sto_path = joinpath(dirname(pathof(BioStockholm)), "..",
+                    "test", "example2.sto")
 sto_str = read(sto_path, String)
+print(sto_str)
 
 sto = read(sto_path, Stockholm)
 sto = parse(Stockholm, sto_str)
+
 write("foobar.sto", sto)
+
 print(sto)
 print(stdout, sto)
 ```
@@ -36,4 +40,4 @@ print(stdout, sto)
 
 [MIToS.jl](https://github.com/diegozea/MIToS.jl) is a package for
 analysing protein sequences that also supports parsing the Stockholm
-format and many things more.
+format (and many more things).
