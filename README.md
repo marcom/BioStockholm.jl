@@ -40,6 +40,12 @@ print(stdout, sto)
 ```
 
 
+## Limitations / TODO
+- when writing, long sequences or text is never split over multiple lines
+- too much string concatenation for sequences split over multiple lines
+- integrate with BioJulia string types
+
+
 ## Related packages
 
 [MIToS.jl](https://github.com/diegozea/MIToS.jl) is a package for
