@@ -1,9 +1,10 @@
 # BioStockholm.jl
 
 Julia parser for the Stockholm file format (.sto) used for multiple
-sequence alignments (Pfam, Rfam, etc).  It uses
+sequence alignments (Pfam, Rfam, etc).  This package uses
 [Automa.jl](https://github.com/BioJulia/Automa.jl) under the hood to
 generate a finite state machine parser.
+
 
 ## Installation
 
@@ -14,13 +15,22 @@ to install it from github by typing this into the Julia REPL:
 ] add https://github.com/marcom/BioStockholm.jl
 ```
 
+
 ## Usage
 
 ```julia
 using BioStockholm
+
+sto_path = joinpath(pathof(BioStockholm), "test", "exampe2.sto")
+sto_str = read(sto_path, String)
+
+sto = read(sto_path, Stockholm)
 sto = parse(Stockholm, sto_str)
+write("foobar.sto", sto)
 print(sto)
+print(stdout, sto)
 ```
+
 
 ## Related packages
 

@@ -4,8 +4,9 @@ using BioStockholm
 # TODO
 # - test that correct data is stored
 
-# example_sto1, example_sto2
-include("example_data.jl")
+# example Stockholm alignment files
+example_sto1 = read("example1.sto", String)
+example_sto2 = read("example2.sto", String)
 
 @testset "parse" begin
     for sto_str in [example_sto1, example_sto2]
