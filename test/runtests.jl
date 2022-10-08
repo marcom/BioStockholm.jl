@@ -1,5 +1,7 @@
 using Test
 using BioStockholm
+using OrderedCollections: OrderedDict
+const ODict = OrderedDict
 
 # TODO
 # - test that correct data is stored
@@ -17,17 +19,17 @@ end
 
 @testset "print" begin
     sto = Stockholm{String}(;
-        GF  = Dict("FOO"    => "some text",
-                   "BARBAZ" => "some more text"),
-        GS  = Dict("Seq1/1.1"  => Dict("Prop1"     => "some text for property"),
-                   "Seq2/2.11" => Dict("Property2" => "even more text")),
-        seq = Dict("Seq1/1.1"                   => "GGGAAACCC",
-                   "Seq2/2.11"                  => "UUGAGACCA"),
-        GR  = Dict("Seq1/1.1"  => Dict("foo"    => "EEGHHHEEC",
-                                       "barbaz" => "...---..."),
-                   "Seq2/2.11" => Dict("foo"    => "HHEEEEECE")),
-        GC  = Dict("FOO"                        => "(((...)))",
-                   "FOOBAR"                     => "+--...--+")
+        GF  = ODict("FOO"    => "some text",
+                    "BARBAZ" => "some more text"),
+        GS  = ODict("Seq1/1.1"  => ODict("Prop1"     => "some text for property"),
+                    "Seq2/2.11" => ODict("Property2" => "even more text")),
+        seq = ODict("Seq1/1.1"                    => "GGGAAACCC",
+                    "Seq2/2.11"                   => "UUGAGACCA"),
+        GR  = ODict("Seq1/1.1"  => ODict("foo"    => "EEGHHHEEC",
+                                         "barbaz" => "...---..."),
+                    "Seq2/2.11" => ODict("foo"    => "HHEEEEECE")),
+        GC  = ODict("FOO"                         => "(((...)))",
+                    "FOOBAR"                      => "+--...--+")
     )
     iobuf = IOBuffer()
     print(iobuf, sto)

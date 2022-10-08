@@ -3,6 +3,7 @@ module BioStockholm
 import Automa
 import Automa.RegExp: @re_str
 const re = Automa.RegExp
+using OrderedCollections: OrderedDict
 
 export Stockholm
 
@@ -19,20 +20,20 @@ export Stockholm
 
 Base.@kwdef struct Stockholm{Tseq}
     # seqname => seqdata
-    seq :: Dict{String, Tseq} =
-        Dict{String, Tseq}()
+    seq :: OrderedDict{String, Tseq} =
+        OrderedDict{String, Tseq}()
     # per-file-feature => text
-    GF  :: Dict{String, String} =
-        Dict{String, String}()
+    GF  :: OrderedDict{String, String} =
+        OrderedDict{String, String}()
     # seqname => per-seq-feature => text
-    GS  :: Dict{String, Dict{String, String}} =
-        Dict{String, Dict{String, String}}()
+    GS  :: OrderedDict{String, OrderedDict{String, String}} =
+        OrderedDict{String, OrderedDict{String, String}}()
     # per-file-feature => seqdata
-    GC  :: Dict{String, Tseq} =
-        Dict{String, Tseq}()
+    GC  :: OrderedDict{String, Tseq} =
+        OrderedDict{String, Tseq}()
     # seqname => per-seq-feature => seqdata
-    GR  :: Dict{String, Dict{String, Tseq}} =
-        Dict{String, Dict{String, Tseq}}()
+    GR  :: OrderedDict{String, OrderedDict{String, Tseq}} =
+        OrderedDict{String, OrderedDict{String, Tseq}}()
 
     Stockholm{Tseq}(seq, GF, GS, GC, GR) where {Tseq} =
         new{Tseq}(seq, GF, GS, GC, GR)
@@ -150,14 +151,14 @@ const stockholm_actions = Dict(
                 gs_records[seqname][feature] = text
             end
         else
-            gs_records[seqname] = Dict(feature => text)
+            gs_records[seqname] = OrderedDict(feature => text)
         end
     end,
     :line_GR => quote
         if haskey(gr_records, seqname)
             gr_records[seqname][feature] = get(gr_records[seqname], feature, "") * aligned_seq
         else
-            gr_records[seqname] = Dict(feature => aligned_seq)
+            gr_records[seqname] = OrderedDict(feature => aligned_seq)
         end
     end,
     :line_seq => :(
@@ -187,11 +188,11 @@ Base.parse(::Type{Stockholm}, data::Union{String,Vector{UInt8}}) =
 const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
 @eval function parse_stockholm(data::Union{String,Vector{UInt8}})
     # variables for the action code
-    sequences  = Dict{String,String}()               # seqname => aligned_seq
-    gf_records = Dict{String,String}()               # feature => text
-    gc_records = Dict{String,String}()               # feature => aligned_seq
-    gs_records = Dict{String,Dict{String,String}}()  # seqname => feature => text
-    gr_records = Dict{String,Dict{String,String}}()  # seqname => feature => aligned_seq
+    sequences  = OrderedDict{String,String}()               # seqname => aligned_seq
+    gf_records = OrderedDict{String,String}()               # feature => text
+    gc_records = OrderedDict{String,String}()               # feature => aligned_seq
+    gs_records = OrderedDict{String,OrderedDict{String,String}}()  # seqname => feature => text
+    gr_records = OrderedDict{String,OrderedDict{String,String}}()  # seqname => feature => aligned_seq
     linenum = 1
     mark = 0
     seqname = ""
@@ -239,6 +240,7 @@ function Base.print(io::IO, sto::Stockholm)
         maximum(length(sn) + length(f) + 1 for (sn,f2t) in sto.GR for (f,_) in f2t; init=0),
         maximum(length(f) for (f,_) in sto.GC; init=0)
     )
+    println(io)
     # seq: seqname => seqdata
     for (seqname, s) in sto.seq
         # + 5 for missing "#=GX "
