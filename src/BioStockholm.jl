@@ -47,7 +47,7 @@ Base.@kwdef struct Stockholm{Tseq}
     # at util.jl:504.
     # ** incremental compilation may be fatally broken for this module
     # **
-    Stockholm() = Stockholm{String}()
+    Stockholm(; kwargs...) = Stockholm{String}(; kwargs...)
 end
 
 function Base.:(==)(s1::Stockholm, s2::Stockholm)
@@ -128,10 +128,10 @@ const stockholm_actions = Dict(
     :enter_text        => :(mark = p),
     :enter_aligned_seq => :(mark = p),
 
-    :feature     => :(feature = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
-    :seqname     => :(seqname = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
-    :text        => :(text = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
-    :aligned_seq => :(aligned_seq = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
+    :feature     => :(feature = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
+    :seqname     => :(seqname = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
+    :text        => :(text = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
+    :aligned_seq => :(aligned_seq = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
 
     :line_GF => quote
         if haskey(gf_records, feature)
@@ -166,27 +166,36 @@ const stockholm_actions = Dict(
     ),
 )
 
-Base.read(io::IO, ::Type{Stockholm}) = parse(Stockholm, read(io, String))
+Base.read(io::IO, ::Type{Stockholm{T}}) where {T} =
+    parse(Stockholm, read(io, String))
 
-function Base.read(filepath::AbstractString, ::Type{Stockholm})
+Base.read(io::IO, ::Type{Stockholm}) =
+    read(io, Stockholm{String})
+
+Base.read(filepath::AbstractString, ::Type{Stockholm{T}}) where {T} =
     open(filepath) do io
         read(io, Stockholm)
     end
-end
 
-Base.write(io::IO, sto::Stockholm) = print(io, sto)
+Base.read(filepath::AbstractString, ::Type{Stockholm}) =
+    read(filepath, Stockholm{String})
 
-function Base.write(filepath::AbstractString, sto::Stockholm)
+Base.write(io::IO, sto::Stockholm) =
+    print(io, sto)
+
+Base.write(filepath::AbstractString, sto::Stockholm) =
     open(filepath, "w") do io
         print(io, sto)
     end
-end
 
 Base.parse(::Type{Stockholm}, data::Union{String,Vector{UInt8}}) =
-    parse_stockholm(data)
+    parse_stockholm(String, data)
+
+Base.parse(::Type{Stockholm{T}}, data::Union{String,Vector{UInt8}}) where {T} =
+    parse_stockholm(T, data)
 
 const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
-@eval function parse_stockholm(data::Union{String,Vector{UInt8}})
+@eval function parse_stockholm(T::Type, data::Union{String,Vector{UInt8}})
     # variables for the action code
     sequences  = OrderedDict{String,String}()               # seqname => aligned_seq
     gf_records = OrderedDict{String,String}()               # feature => text
@@ -211,8 +220,8 @@ const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
         error("failed to parse on line ", linenum)
     end
 
-    return Stockholm{String}(; seq=sequences, GF=gf_records, GC=gc_records,
-                                GS=gs_records, GR=gr_records)
+    return Stockholm{T}(; seq=sequences, GF=gf_records, GC=gc_records,
+                        GS=gs_records, GR=gr_records)
 end
 
 Base.print(sto::Stockholm) = print(stdout, sto)
