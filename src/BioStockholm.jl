@@ -79,20 +79,20 @@ function Base.show(io::IO, mime::MIME"text/plain", sto::Stockholm)
 end
 
 const stockholm_machine = let
-    nl          = re"\r?\n"
-    ws          = re"[ \t]+"
-    feature     = re"[^ \t\n]+"
-    seqname     = re"[^# \t\n][^ \t\n]*"
-    text        = re"[^\n]*"
-    aligned_seq = re"[^ \t\n]+"
+    nl      = re"\r?\n"
+    ws      = re"[ \t]+"
+    feature = re"[^ \t\n]+"
+    seqname = re"[^# \t\n][^ \t\n]*"
+    text    = re"[^\n]*"
+    seqdata = re"[^ \t\n]+"
 
     line_header = re"# STOCKHOLM 1.0" * nl
     line_end    = re"//" * nl
     line_GF     = re"#=GF" * ws * feature * ws * text * nl
-    line_GC     = re"#=GC" * ws * feature * ws * aligned_seq * nl
+    line_GC     = re"#=GC" * ws * feature * ws * seqdata * nl
     line_GS     = re"#=GS" * ws * seqname * ws * feature * ws * text * nl
-    line_GR     = re"#=GR" * ws * seqname * ws * feature * ws * aligned_seq * nl
-    line_seq    = seqname * ws * aligned_seq * nl
+    line_GR     = re"#=GR" * ws * seqname * ws * feature * ws * seqdata * nl
+    line_seq    = seqname * ws * seqdata * nl
     line_empty  = re"[ \t]*" * nl
 
     stockholm = (
@@ -102,20 +102,20 @@ const stockholm_machine = let
         * line_end
     )
 
-    nl.actions[:enter]          = [:countline]
-    feature.actions[:enter]     = [:enter_feature]
-    feature.actions[:exit]      = [:feature]
-    seqname.actions[:enter]     = [:enter_seqname]
-    seqname.actions[:exit]      = [:seqname]
-    text.actions[:enter]        = [:enter_text]
-    text.actions[:exit]         = [:text]
-    aligned_seq.actions[:enter] = [:enter_aligned_seq]
-    aligned_seq.actions[:exit]  = [:aligned_seq]
-    line_GF.actions[:exit]      = [:line_GF]
-    line_GC.actions[:exit]      = [:line_GC]
-    line_GS.actions[:exit]      = [:line_GS]
-    line_GR.actions[:exit]      = [:line_GR]
-    line_seq.actions[:exit]     = [:line_seq]
+    nl.actions[:enter]      = [:countline]
+    feature.actions[:enter] = [:enter_feature]
+    feature.actions[:exit]  = [:feature]
+    seqname.actions[:enter] = [:enter_seqname]
+    seqname.actions[:exit]  = [:seqname]
+    text.actions[:enter]    = [:enter_text]
+    text.actions[:exit]     = [:text]
+    seqdata.actions[:enter] = [:enter_seqdata]
+    seqdata.actions[:exit]  = [:seqdata]
+    line_GF.actions[:exit]  = [:line_GF]
+    line_GC.actions[:exit]  = [:line_GC]
+    line_GS.actions[:exit]  = [:line_GS]
+    line_GR.actions[:exit]  = [:line_GR]
+    line_seq.actions[:exit] = [:line_seq]
 
     Automa.compile(stockholm)
 end
@@ -123,15 +123,15 @@ end
 const stockholm_actions = Dict(
     :countline => :(linenum += 1),
 
-    :enter_feature     => :(mark = p),
-    :enter_seqname     => :(mark = p),
-    :enter_text        => :(mark = p),
-    :enter_aligned_seq => :(mark = p),
+    :enter_feature => :(mark = p),
+    :enter_seqname => :(mark = p),
+    :enter_text    => :(mark = p),
+    :enter_seqdata => :(mark = p),
 
-    :feature     => :(feature = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
-    :seqname     => :(seqname = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
-    :text        => :(text = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
-    :aligned_seq => :(aligned_seq = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
+    :feature => :(feature = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
+    :seqname => :(seqname = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
+    :text    => :(text = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
+    :seqdata => :(seqdata = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
 
     :line_GF => quote
         if haskey(gf_records, feature)
@@ -141,7 +141,7 @@ const stockholm_actions = Dict(
         end
     end,
     :line_GC => :(
-        gc_records[feature] = get(gc_records, feature, "") * aligned_seq
+        gc_records[feature] = get(gc_records, feature, "") * seqdata
     ),
     :line_GS => quote
         if haskey(gs_records, seqname)
@@ -156,13 +156,13 @@ const stockholm_actions = Dict(
     end,
     :line_GR => quote
         if haskey(gr_records, seqname)
-            gr_records[seqname][feature] = get(gr_records[seqname], feature, "") * aligned_seq
+            gr_records[seqname][feature] = get(gr_records[seqname], feature, "") * seqdata
         else
-            gr_records[seqname] = OrderedDict(feature => aligned_seq)
+            gr_records[seqname] = OrderedDict(feature => seqdata)
         end
     end,
     :line_seq => :(
-        sequences[seqname] = get(sequences, seqname, "") * aligned_seq
+        sequences[seqname] = get(sequences, seqname, "") * seqdata
     ),
 )
 
@@ -197,17 +197,17 @@ Base.parse(::Type{Stockholm{T}}, data::Union{String,Vector{UInt8}}) where {T} =
 const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
 @eval function parse_stockholm(T::Type, data::Union{String,Vector{UInt8}})
     # variables for the action code
-    sequences  = OrderedDict{String,String}()               # seqname => aligned_seq
+    sequences  = OrderedDict{String,String}()               # seqname => seqdata
     gf_records = OrderedDict{String,String}()               # feature => text
-    gc_records = OrderedDict{String,String}()               # feature => aligned_seq
+    gc_records = OrderedDict{String,String}()               # feature => seqdata
     gs_records = OrderedDict{String,OrderedDict{String,String}}()  # seqname => feature => text
-    gr_records = OrderedDict{String,OrderedDict{String,String}}()  # seqname => feature => aligned_seq
+    gr_records = OrderedDict{String,OrderedDict{String,String}}()  # seqname => feature => seqdata
     linenum = 1
     mark = 0
     seqname = ""
     feature = ""
     text = ""
-    aligned_seq = ""
+    seqdata = ""
 
     # init vars for state machine
     $(Automa.generate_init_code(context, stockholm_machine))
