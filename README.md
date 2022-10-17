@@ -8,11 +8,9 @@ generate a finite state machine parser.
 
 ## Installation
 
-As the package is not yet registered in the Julia registry, you have
-to install it from github by typing this into the Julia REPL:
-
 ```
-] add https://github.com/marcom/BioStockholm.jl
+using Pkg
+pkg"add https://github.com/marcom/BioStockholm.jl"
 ```
 
 

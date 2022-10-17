@@ -17,21 +17,43 @@ export Stockholm
 #   - p_end
 #   - p_eof
 
+"""
+    Stockholm{Tseq}
 
+Stockholm format for multiple sequence alignment with
+annotations. Sequence data is of type `Tseq`.
+
+## Examples
+```julia
+sto = read(sto_filepath::String, Stockholm)
+sto = parse(Stockholm, sto_str::String)
+write("out.sto", sto)
+print(sto)
+```
+
+## Fields
+```
+seq: seqname => seqdata
+GF : per_file_feature => text
+GS : seqname => per_seq_feature => text
+GC : per_file_feature => seqdata
+GR : seqname => per_seq_feature => seqdata
+```
+"""
 Base.@kwdef struct Stockholm{Tseq}
     # seqname => seqdata
     seq :: OrderedDict{String, Tseq} =
         OrderedDict{String, Tseq}()
-    # per-file-feature => text
+    # per_file_feature => text
     GF  :: OrderedDict{String, String} =
         OrderedDict{String, String}()
-    # seqname => per-seq-feature => text
+    # seqname => per_seq_feature => text
     GS  :: OrderedDict{String, OrderedDict{String, String}} =
         OrderedDict{String, OrderedDict{String, String}}()
-    # per-file-feature => seqdata
+    # per_file_feature => seqdata
     GC  :: OrderedDict{String, Tseq} =
         OrderedDict{String, Tseq}()
-    # seqname => per-seq-feature => seqdata
+    # seqname => per_seq_feature => seqdata
     GR  :: OrderedDict{String, OrderedDict{String, Tseq}} =
         OrderedDict{String, OrderedDict{String, Tseq}}()
 
