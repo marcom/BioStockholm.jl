@@ -247,22 +247,36 @@ const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
 end
 
 Base.print(sto::Stockholm) = print(stdout, sto)
-function Base.print(io::IO, sto::Stockholm)
+function Base.print(io::IO, sto::Stockholm; maxline::Int=50)
     # TODO: split long lines
+    # - [done] GF
+    # - [done] GS
+    # - seq, GC, GR
 
     println(io, "# STOCKHOLM 1.0")
     # gf: feature => text
     max_len = maximum(length(f) for (f,_) in sto.GF)
     for (feature, text) in sto.GF
         indent = repeat(" ", max_len - length(feature))
-        println(io, "#=GF $feature    $(indent)$(text)")
+        t = collect(text)
+        n = length(text)
+        for i = 0:maxline:n-1
+            txt = join(t[i+1:min(i+maxline,n)])
+            println(io, "#=GF $feature    $(indent)$(txt)")
+        end
     end
     # gs: seqname => feature => text
-    max_len = maximum(length(sn) + length(f) for (sn,f2t) in sto.GS for (f,_) in f2t; init=0)
+    # TODO: align seqname / feature when printing
+    max_desc_len = maximum(length(sn) + length(f) for (sn,f2t) in sto.GS for (f,_) in f2t; init=0)
     for (seqname, feature_to_text) in sto.GS
         for (feature, text) in feature_to_text
-            indent = repeat(" ", max_len - (length(seqname) + length(feature)))
-            println(io, "#=GS $seqname $feature    $(indent)$(text)")
+            indent = repeat(" ", max_desc_len - (length(seqname) + length(feature)))
+            t = collect(text)
+            n = length(text)
+            for i = 0:maxline:n-1
+                txt = join(t[i+1:min(i+maxline,n)])
+                println(io, "#=GS $seqname $feature    $(indent)$(txt)")
+            end
         end
     end
     max_len = max(
