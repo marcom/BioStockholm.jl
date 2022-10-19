@@ -7,6 +7,10 @@ using OrderedCollections: OrderedDict
 
 export Stockholm
 
+# Stockholm format for multiple sequence alignments
+# https://sonnhammer.sbc.su.se/Stockholm.html
+# https://sonnhammer.sbc.su.se/Stockholm.html
+
 # TODO
 # - collect data as Vector{Char} or Vector{UInt8} instead of as String?
 #   - avoids excessive string concatenation
