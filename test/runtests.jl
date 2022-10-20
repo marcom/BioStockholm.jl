@@ -3,9 +3,6 @@ using BioStockholm
 using OrderedCollections: OrderedDict
 const ODict = OrderedDict
 
-# TODO
-# - test that correct data is stored
-
 # example Stockholm alignment files
 example_sto1 = read("example1.sto", String)
 example_sto2 = read("example2.sto", String)
@@ -18,8 +15,7 @@ example_sto2 = read("example2.sto", String)
     GR  = ODict("seq1" => ODict("feat1" => "---xxx", "feat2" => "EEECCC"))
     GC  = ODict("feat" => "oxoxox")
 
-    @test Stockholm() isa Stockholm{String}
-    @test Stockholm(; seq, GF, GS, GR, GC) isa Stockholm{String}
+    @test Stockholm{String}(; seq, GF, GS, GR, GC) isa Stockholm{String}
 
     for T in [String, Vector{UInt8}, Vector{Char}]
         s = ODict(k => T(v) for (k,v) in seq)
@@ -48,23 +44,31 @@ end
 end
 
 @testset "print" begin
-    sto = Stockholm{String}(;
-        GF  = ODict("FOO"    => "some text",
-                    "BARBAZ" => "some more text"),
-        GS  = ODict("Seq1/1.1"  => ODict("Prop1"     => "some text for property"),
-                    "Seq2/2.11" => ODict("Property2" => "even more text")),
-        seq = ODict("Seq1/1.1"                    => "GGGAAACCC",
-                    "Seq2/2.11"                   => "UUGAGACCA"),
-        GR  = ODict("Seq1/1.1"  => ODict("foo"    => "EEGHHHEEC",
-                                         "barbaz" => "...---..."),
-                    "Seq2/2.11" => ODict("foo"    => "HHEEEEECE")),
-        GC  = ODict("FOO"                         => "(((...)))",
-                    "FOOBAR"                      => "+--...--+")
-    )
-    iobuf = IOBuffer()
-    print(iobuf, sto)
-    out = String(take!(iobuf))
-    @test length(out) > 0
+    stos = [
+        Stockholm{String}(;
+            GF  = ODict("FOO"    => "some text",
+                        "BARBAZ" => "some more text"),
+            GS  = ODict("Seq1/1.1"  => ODict("Prop1"     => "some text for property" * repeat("X ", 100)),
+                        "Seq2/2.11" => ODict("Property2" => "even more text" * repeat("Y ", 100))),
+            seq = ODict("Seq1/1.1"                    => "GGGAAACCC",
+                        "Seq2/2.11"                   => "UUGAGACCA"),
+            GR  = ODict("Seq1/1.1"  => ODict("foo"    => "EEGHHHEEC",
+                                             "barbaz" => "...---..."),
+                        "Seq2/2.11" => ODict("foo"    => "HHEEEEECE")),
+            GC  = ODict("FOO"                         => "(((...)))",
+                        "FOOBAR"                      => "+--...--+")
+        ),
+        parse(Stockholm, example_sto1),
+        parse(Stockholm, example_sto2)
+    ]
+    for sto in stos
+        iobuf = IOBuffer()
+        print(iobuf, sto)
+        out = String(take!(iobuf))
+        @test length(out) > 0
+        sto2 = parse(Stockholm, out)
+        @test sto2 == sto
+    end
 end
 
 @testset "write" begin

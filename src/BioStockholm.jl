@@ -1,15 +1,15 @@
 module BioStockholm
 
+# Stockholm format for multiple sequence alignments
+#   https://sonnhammer.sbc.su.se/Stockholm.html
+#   https://en.wikipedia.org/wiki/Stockholm_format
+
 import Automa
 import Automa.RegExp: @re_str
 const re = Automa.RegExp
 using OrderedCollections: OrderedDict
 
 export Stockholm
-
-# Stockholm format for multiple sequence alignments
-# https://sonnhammer.sbc.su.se/Stockholm.html
-# https://sonnhammer.sbc.su.se/Stockholm.html
 
 # TODO
 # - collect data as Vector{Char} or Vector{UInt8} instead of as String?
@@ -63,17 +63,6 @@ Base.@kwdef struct Stockholm{Tseq}
 
     Stockholm{Tseq}(seq, GF, GS, GC, GR) where {Tseq} =
         new{Tseq}(seq, GF, GS, GC, GR)
-
-    # TODO: warning for this constructor, but if it's removed,
-    # `Stockholm()` doesn't work
-    #
-    # WARNING: Method definition (::Type{BioStockholm.Stockholm{T}
-    # where T})() in module BioStockholm at
-    # /home/mcm/src/BioStockholm.jl/src/BioStockholm.jl:50 overwritten
-    # at util.jl:504.
-    # ** incremental compilation may be fatally broken for this module
-    # **
-    Stockholm(; kwargs...) = Stockholm{String}(; kwargs...)
 end
 
 function Base.:(==)(s1::Stockholm, s2::Stockholm)
@@ -157,7 +146,7 @@ const stockholm_actions = Dict(
     :feature => :(feature = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
     :seqname => :(seqname = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
     :text    => :(text = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
-    :seqdata => :(seqdata = mark == 0 ? "" : T(data[mark:p-1]); mark = 0),
+    :seqdata => :(seqdata = mark == 0 ? Tseq() : Tseq(data[mark:p-1]); mark = 0),
 
     :line_GF => quote
         if haskey(gf_records, feature)
@@ -221,13 +210,13 @@ Base.parse(::Type{Stockholm{T}}, data::Union{String,Vector{UInt8}}) where {T} =
     parse_stockholm(T, data)
 
 const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
-@eval function parse_stockholm(T::Type, data::Union{String,Vector{UInt8}})
+@eval function parse_stockholm(::Type{Tseq}, data::Union{String,Vector{UInt8}}) where {Tseq}
     # variables for the action code
-    sequences  = OrderedDict{String,String}()               # seqname => seqdata
-    gf_records = OrderedDict{String,String}()               # feature => text
-    gc_records = OrderedDict{String,String}()               # feature => seqdata
+    sequences  = OrderedDict{String,Tseq}()                        # seqname => seqdata
+    gf_records = OrderedDict{String,String}()                      # feature => text
+    gc_records = OrderedDict{String,Tseq}()                        # feature => seqdata
     gs_records = OrderedDict{String,OrderedDict{String,String}}()  # seqname => feature => text
-    gr_records = OrderedDict{String,OrderedDict{String,String}}()  # seqname => feature => seqdata
+    gr_records = OrderedDict{String,OrderedDict{String,Tseq}}()    # seqname => feature => seqdata
     linenum = 1
     mark = 0
     seqname = ""
@@ -246,41 +235,28 @@ const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
         error("failed to parse on line ", linenum)
     end
 
-    return Stockholm{T}(; seq=sequences, GF=gf_records, GC=gc_records,
-                        GS=gs_records, GR=gr_records)
+    return Stockholm{Tseq}(; seq=sequences, GF=gf_records, GC=gc_records,
+                           GS=gs_records, GR=gr_records)
 end
 
 Base.print(sto::Stockholm) = print(stdout, sto)
-function Base.print(io::IO, sto::Stockholm; maxline::Int=50)
-    # TODO: split long lines
-    # - [done] GF
-    # - [done] GS
-    # - seq, GC, GR
 
+function Base.print(io::IO, sto::Stockholm)
+    # TODO: split long lines
     println(io, "# STOCKHOLM 1.0")
-    # gf: feature => text
-    max_len = maximum(length(f) for (f,_) in sto.GF)
+    # GF: feature => text
+    max_len = maximum(length(f) for (f,_) in sto.GF; init=0)
     for (feature, text) in sto.GF
         indent = repeat(" ", max_len - length(feature))
-        t = collect(text)
-        n = length(text)
-        for i = 0:maxline:n-1
-            txt = join(t[i+1:min(i+maxline,n)])
-            println(io, "#=GF $feature    $(indent)$(txt)")
-        end
+        println(io, "#=GF $feature    $(indent)$(text)")
     end
-    # gs: seqname => feature => text
+    # GS: seqname => feature => text
     # TODO: align seqname / feature when printing
     max_desc_len = maximum(length(sn) + length(f) for (sn,f2t) in sto.GS for (f,_) in f2t; init=0)
     for (seqname, feature_to_text) in sto.GS
         for (feature, text) in feature_to_text
             indent = repeat(" ", max_desc_len - (length(seqname) + length(feature)))
-            t = collect(text)
-            n = length(text)
-            for i = 0:maxline:n-1
-                txt = join(t[i+1:min(i+maxline,n)])
-                println(io, "#=GS $seqname $feature    $(indent)$(txt)")
-            end
+            println(io, "#=GS $seqname $feature    $(indent)$(text)")
         end
     end
     max_len = max(
@@ -294,20 +270,20 @@ function Base.print(io::IO, sto::Stockholm; maxline::Int=50)
     for (seqname, s) in sto.seq
         # + 5 for missing "#=GX "
         indent = repeat(" ", max_len - length(seqname) + 5)
-        println(io, "$seqname    $(indent)$(s)")
-        # gr: seqname => feature => seqdata
+        println(io, "$seqname    $(indent)$(String(s))")
+        # GR: seqname => feature => seqdata
         if haskey(sto.GR, seqname)
             for (feature, r) in sto.GR[seqname]
                 # +1 for extra space char
                 indent = repeat(" ", max_len - (length(seqname) + length(feature) + 1))
-                println(io, "#=GR $seqname $feature    $(indent)$(r)")
+                println(io, "#=GR $seqname $feature    $(indent)$(String(r))")
             end
         end
     end
-    # gc: feature => seqdata
+    # GC: feature => seqdata
     for (feature, c) in sto.GC
         indent = repeat(" ", max_len - length(feature))
-        println(io, "#=GC $feature    $(indent)$(c)")
+        println(io, "#=GC $feature    $(indent)$(String(c))")
     end
     println(io, "//")
 end
