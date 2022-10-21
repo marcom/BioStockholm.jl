@@ -1,6 +1,6 @@
 module BioStockholm
 
-# Stockholm format for multiple sequence alignments
+# Stockholm format for multiple sequence alignments (MSA)
 #   https://sonnhammer.sbc.su.se/Stockholm.html
 #   https://en.wikipedia.org/wiki/Stockholm_format
 
@@ -9,7 +9,7 @@ import Automa.RegExp: @re_str
 const re = Automa.RegExp
 using OrderedCollections: OrderedDict
 
-export Stockholm
+export MSA
 
 # TODO
 # - collect data as Vector{Char} or Vector{UInt8} instead of as String?
@@ -22,17 +22,19 @@ export Stockholm
 #   - p_eof
 
 """
-    Stockholm{Tseq}
+    MSA{T}
 
 Stockholm format for multiple sequence alignment with
-annotations. Sequence data is of type `Tseq`.
+annotations. Sequence data is of type `Vector{T}`.
 
 ## Examples
 ```julia
-sto = read(sto_filepath::String, Stockholm)
-sto = parse(Stockholm, sto_str::String)
-write("out.sto", sto)
-print(sto)
+using BioStockholm
+msa = read(msa_filepath::String, MSA)
+msa = parse(MSA, msa_str::String)
+msa = parse(MSA{UInt8}, msa_str::String)
+write("out.sto", msa)
+print(msa)
 ```
 
 ## Fields
@@ -44,10 +46,10 @@ GC : per_file_feature => seqdata
 GR : seqname => per_seq_feature => seqdata
 ```
 """
-Base.@kwdef struct Stockholm{Tseq}
+Base.@kwdef struct MSA{T}
     # seqname => seqdata
-    seq :: OrderedDict{String, Tseq} =
-        OrderedDict{String, Tseq}()
+    seq :: OrderedDict{String, Vector{T}} =
+        OrderedDict{String, Vector{T}}()
     # per_file_feature => text
     GF  :: OrderedDict{String, String} =
         OrderedDict{String, String}()
@@ -55,17 +57,27 @@ Base.@kwdef struct Stockholm{Tseq}
     GS  :: OrderedDict{String, OrderedDict{String, String}} =
         OrderedDict{String, OrderedDict{String, String}}()
     # per_file_feature => seqdata
-    GC  :: OrderedDict{String, Tseq} =
-        OrderedDict{String, Tseq}()
+    GC  :: OrderedDict{String, Vector{T}} =
+        OrderedDict{String, Vector{T}}()
     # seqname => per_seq_feature => seqdata
-    GR  :: OrderedDict{String, OrderedDict{String, Tseq}} =
-        OrderedDict{String, OrderedDict{String, Tseq}}()
+    GR  :: OrderedDict{String, OrderedDict{String, Vector{T}}} =
+        OrderedDict{String, OrderedDict{String, Vector{T}}}()
 
-    Stockholm{Tseq}(seq, GF, GS, GC, GR) where {Tseq} =
-        new{Tseq}(seq, GF, GS, GC, GR)
+    function MSA{T}(seq, GF, GS, GC, GR) where {T}
+        if valtype(seq) === String
+            seq = OrderedDict(name => T.(collect(s)) for (name,s) in seq)
+        end
+        if valtype(GC) === String
+            GC = OrderedDict(feat => T.(collect(s)) for (feat,s) in GC)
+        end
+        if valtype(valtype(GR)) === String
+            GR = OrderedDict(name => OrderedDict(feat => T.(collect(s)) for (feat,s) in f2s) for (name,f2s) in GR)
+        end
+        return new{T}(seq, GF, GS, GC, GR)
+    end
 end
 
-function Base.:(==)(s1::Stockholm, s2::Stockholm)
+function Base.:(==)(s1::MSA, s2::MSA)
     return (s1.seq == s2.seq
             && s1.GF == s2.GF
             && s1.GS == s2.GS
@@ -73,24 +85,24 @@ function Base.:(==)(s1::Stockholm, s2::Stockholm)
             && s1.GR == s2.GR)
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", sto::Stockholm)
-    show(io, mime, typeof(sto))
-    println(" with $(length(sto.seq)) sequences")
+function Base.show(io::IO, mime::MIME"text/plain", msa::MSA)
+    show(io, mime, typeof(msa))
+    println(" with $(length(msa.seq)) sequences")
     println(io, "seq")
     print(io, " ")
-    show(io, mime, sto.seq)
+    show(io, mime, msa.seq)
     println(io, "\nGF")
     print(io, " ")
-    show(io, mime, sto.GF)
+    show(io, mime, msa.GF)
     println(io, "\nGS")
     print(io, " ")
-    show(io, mime, sto.GS)
+    show(io, mime, msa.GS)
     println(io, "\nGR")
     print(io, " ")
-    show(io, mime, sto.GR)
+    show(io, mime, msa.GR)
     println(io, "\nGC")
     print(io, " ")
-    show(io, mime, sto.GC)
+    show(io, mime, msa.GC)
 end
 
 const stockholm_machine = let
@@ -146,7 +158,7 @@ const stockholm_actions = Dict(
     :feature => :(feature = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
     :seqname => :(seqname = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
     :text    => :(text = mark == 0 ? "" : String(data[mark:p-1]); mark = 0),
-    :seqdata => :(seqdata = mark == 0 ? Tseq() : Tseq(data[mark:p-1]); mark = 0),
+    :seqdata => :(seqdata = mark == 0 ? T[] : T.(collect(data[mark:p-1])); mark = 0),
 
     :line_GF => quote
         if haskey(gf_records, feature)
@@ -156,7 +168,8 @@ const stockholm_actions = Dict(
         end
     end,
     :line_GC => :(
-        gc_records[feature] = get(gc_records, feature, "") * seqdata
+        # gc_records[feature] = get(gc_records, feature, "") * seqdata
+        gc_records[feature] = append!(get(gc_records, feature, T[]), seqdata)
     ),
     :line_GS => quote
         if haskey(gs_records, seqname)
@@ -171,52 +184,53 @@ const stockholm_actions = Dict(
     end,
     :line_GR => quote
         if haskey(gr_records, seqname)
-            gr_records[seqname][feature] = get(gr_records[seqname], feature, "") * seqdata
+            # gr_records[seqname][feature] = get(gr_records[seqname], feature, "") * seqdata
+            gr_records[seqname][feature] = append!(get(gr_records[seqname], feature, T[]), seqdata)
         else
             gr_records[seqname] = OrderedDict(feature => seqdata)
         end
     end,
     :line_seq => :(
-        sequences[seqname] = get(sequences, seqname, "") * seqdata
+        sequences[seqname] = append!(get(sequences, seqname, T[]), seqdata)
     ),
 )
 
-Base.read(io::IO, ::Type{Stockholm{T}}) where {T} =
-    parse(Stockholm, read(io, String))
+Base.read(io::IO, ::Type{MSA{T}}) where {T} =
+    parse(MSA, read(io, String))
 
-Base.read(io::IO, ::Type{Stockholm}) =
-    read(io, Stockholm{String})
+Base.read(io::IO, ::Type{MSA}) =
+    read(io, MSA{Char})
 
-Base.read(filepath::AbstractString, ::Type{Stockholm{T}}) where {T} =
+Base.read(filepath::AbstractString, ::Type{MSA{T}}) where {T} =
     open(filepath) do io
-        read(io, Stockholm)
+        read(io, MSA)
     end
 
-Base.read(filepath::AbstractString, ::Type{Stockholm}) =
-    read(filepath, Stockholm{String})
+Base.read(filepath::AbstractString, ::Type{MSA}) =
+    read(filepath, MSA{String})
 
-Base.write(io::IO, sto::Stockholm) =
-    print(io, sto)
+Base.write(io::IO, msa::MSA) =
+    print(io, msa)
 
-Base.write(filepath::AbstractString, sto::Stockholm) =
+Base.write(filepath::AbstractString, msa::MSA) =
     open(filepath, "w") do io
-        print(io, sto)
+        print(io, msa)
     end
 
-Base.parse(::Type{Stockholm}, data::Union{String,Vector{UInt8}}) =
-    parse_stockholm(String, data)
+Base.parse(::Type{MSA}, data::Union{String,Vector{UInt8}}) =
+    parse_stockholm(Char, data)
 
-Base.parse(::Type{Stockholm{T}}, data::Union{String,Vector{UInt8}}) where {T} =
+Base.parse(::Type{MSA{T}}, data::Union{String,Vector{UInt8}}) where {T} =
     parse_stockholm(T, data)
 
 const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
-@eval function parse_stockholm(::Type{Tseq}, data::Union{String,Vector{UInt8}}) where {Tseq}
+@eval function parse_stockholm(::Type{T}, data::Union{String,Vector{UInt8}}) where {T}
     # variables for the action code
-    sequences  = OrderedDict{String,Tseq}()                        # seqname => seqdata
-    gf_records = OrderedDict{String,String}()                      # feature => text
-    gc_records = OrderedDict{String,Tseq}()                        # feature => seqdata
-    gs_records = OrderedDict{String,OrderedDict{String,String}}()  # seqname => feature => text
-    gr_records = OrderedDict{String,OrderedDict{String,Tseq}}()    # seqname => feature => seqdata
+    sequences  = OrderedDict{String,Vector{T}}()                        # seqname => seqdata
+    gf_records = OrderedDict{String,String}()                           # feature => text
+    gc_records = OrderedDict{String,Vector{T}}()                        # feature => seqdata
+    gs_records = OrderedDict{String,OrderedDict{String,String}}()       # seqname => feature => text
+    gr_records = OrderedDict{String,OrderedDict{String,Vector{T}}}()    # seqname => feature => seqdata
     linenum = 1
     mark = 0
     seqname = ""
@@ -235,55 +249,58 @@ const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
         error("failed to parse on line ", linenum)
     end
 
-    return Stockholm{Tseq}(; seq=sequences, GF=gf_records, GC=gc_records,
-                           GS=gs_records, GR=gr_records)
+    return MSA{T}(; seq=sequences, GF=gf_records, GC=gc_records,
+                  GS=gs_records, GR=gr_records)
 end
 
-Base.print(sto::Stockholm) = print(stdout, sto)
+Base.print(msa::MSA) = print(stdout, msa)
 
-function Base.print(io::IO, sto::Stockholm)
+function Base.print(io::IO, msa::MSA)
     # TODO: split long lines
+    str(a) = String(a)
+    str(a::Vector{UInt8}) = String(copy(a))
+
     println(io, "# STOCKHOLM 1.0")
     # GF: feature => text
-    max_len = maximum(length(f) for (f,_) in sto.GF; init=0)
-    for (feature, text) in sto.GF
+    max_len = maximum(length(f) for (f,_) in msa.GF; init=0)
+    for (feature, text) in msa.GF
         indent = repeat(" ", max_len - length(feature))
         println(io, "#=GF $feature    $(indent)$(text)")
     end
     # GS: seqname => feature => text
     # TODO: align seqname / feature when printing
-    max_desc_len = maximum(length(sn) + length(f) for (sn,f2t) in sto.GS for (f,_) in f2t; init=0)
-    for (seqname, feature_to_text) in sto.GS
+    max_desc_len = maximum(length(sn) + length(f) for (sn,f2t) in msa.GS for (f,_) in f2t; init=0)
+    for (seqname, feature_to_text) in msa.GS
         for (feature, text) in feature_to_text
             indent = repeat(" ", max_desc_len - (length(seqname) + length(feature)))
             println(io, "#=GS $seqname $feature    $(indent)$(text)")
         end
     end
     max_len = max(
-        maximum(length(sn) for (sn,_) in sto.seq; init=0),
+        maximum(length(sn) for (sn,_) in msa.seq; init=0),
         # +1 for extra space char
-        maximum(length(sn) + length(f) + 1 for (sn,f2t) in sto.GR for (f,_) in f2t; init=0),
-        maximum(length(f) for (f,_) in sto.GC; init=0)
+        maximum(length(sn) + length(f) + 1 for (sn,f2t) in msa.GR for (f,_) in f2t; init=0),
+        maximum(length(f) for (f,_) in msa.GC; init=0)
     )
     println(io)
     # seq: seqname => seqdata
-    for (seqname, s) in sto.seq
+    for (seqname, s) in msa.seq
         # + 5 for missing "#=GX "
         indent = repeat(" ", max_len - length(seqname) + 5)
-        println(io, "$seqname    $(indent)$(String(s))")
+        println(io, "$seqname    $(indent)$(str(s))")
         # GR: seqname => feature => seqdata
-        if haskey(sto.GR, seqname)
-            for (feature, r) in sto.GR[seqname]
+        if haskey(msa.GR, seqname)
+            for (feature, r) in msa.GR[seqname]
                 # +1 for extra space char
                 indent = repeat(" ", max_len - (length(seqname) + length(feature) + 1))
-                println(io, "#=GR $seqname $feature    $(indent)$(String(r))")
+                println(io, "#=GR $seqname $feature    $(indent)$(str(r))")
             end
         end
     end
     # GC: feature => seqdata
-    for (feature, c) in sto.GC
+    for (feature, c) in msa.GC
         indent = repeat(" ", max_len - length(feature))
-        println(io, "#=GC $feature    $(indent)$(String(c))")
+        println(io, "#=GC $feature    $(indent)$(str(c))")
     end
     println(io, "//")
 end

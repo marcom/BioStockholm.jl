@@ -21,27 +21,26 @@ pkg"add https://github.com/marcom/BioStockholm.jl"
 using BioStockholm
 
 # example2.sto contains an example Stockholm file
-sto_path = joinpath(dirname(pathof(BioStockholm)), "..",
+msa_path = joinpath(dirname(pathof(BioStockholm)), "..",
                     "test", "example2.sto")
-sto_str = read(sto_path, String)
-print(sto_str)
+msa_str = read(msa_path, String)
+print(msa_str)
 
 # read from a file or parse from a String
-sto = read(sto_path, Stockholm)
-sto = parse(Stockholm, sto_str)
+msa = read(msa_path, MSA)
+msa = parse(MSA, msa_str)
 
 # write to a file
-write("foobar.sto", sto)
+write("foobar.sto", msa)
 
 # pretty-print
-print(sto)
-print(stdout, sto)
+print(msa)
+print(stdout, msa)
 ```
 
 
 ## Limitations / TODO
 - when writing, long sequences or text is never split over multiple lines
-- too much string concatenation for sequences split over multiple lines
 - integrate with BioJulia string types
 
 
