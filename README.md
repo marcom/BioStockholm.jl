@@ -9,9 +9,11 @@ generate a finite state machine parser.
 
 ## Installation
 
+Install BioStockholm from the Julia package REPL, which can be
+accessed by pressing ] from the Julia REPL:
+
 ```
-using Pkg
-pkg"add https://github.com/marcom/BioStockholm.jl"
+add BioStockholm
 ```
 
 
