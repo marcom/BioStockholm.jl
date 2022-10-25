@@ -10,7 +10,7 @@ generate a finite state machine parser.
 ## Installation
 
 Install BioStockholm from the Julia package REPL, which can be
-accessed by pressing ] from the Julia REPL:
+accessed by pressing `]` from the Julia REPL:
 
 ```
 add BioStockholm
