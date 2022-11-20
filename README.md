@@ -22,6 +22,14 @@ add BioStockholm
 ```julia
 using BioStockholm
 
+msa = MSA{Char}(;
+    seq = Dict("human"   => "ACACGCGAAA.GCGCAA.CAAACGUGCACGG",
+               "chimp"   => "GAAUGUGAAAAACACCA.CUCUUGAGGACCU",
+               "bigfoot" => "UUGAG.UUCG..CUCGUUUUCUCGAGUACAC"),
+     GC = Dict("SS_cons" => "...<<<.....>>>....<<....>>.....")
+)
+
+# read from file
 # example2.sto contains an example Stockholm file
 msa_path = joinpath(dirname(pathof(BioStockholm)), "..",
                     "test", "example2.sto")

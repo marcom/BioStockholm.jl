@@ -35,6 +35,13 @@ msa = parse(MSA, msa_str::String)
 msa = parse(MSA{UInt8}, msa_str::String)
 write("out.sto", msa)
 print(msa)
+
+msa = MSA{Char}(;
+    seq = Dict("human"   => "ACACGCGAAA.GCGCAA.CAAACGUGCACGG",
+               "chimp"   => "GAAUGUGAAAAACACCA.CUCUUGAGGACCU",
+               "bigfoot" => "UUGAG.UUCG..CUCGUUUUCUCGAGUACAC"),
+     GC = Dict("SS_cons" => "...<<<.....>>>....<<....>>.....")
+)
 ```
 
 ## Fields
