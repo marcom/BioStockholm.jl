@@ -3,6 +3,9 @@ using BioStockholm
 using OrderedCollections: OrderedDict
 const ODict = OrderedDict
 
+# show which testset is currently running
+starttestset() = println("testing ", Test.get_testset().description)
+
 # example Stockholm alignment files
 example_msa1 = read("example1.sto", String)
 example_msa2 = read("example2.sto", String)
@@ -10,6 +13,7 @@ example_msa2 = read("example2.sto", String)
 @testset verbose=true "BioStockholm" begin
 
     @testset "constructors" begin
+        starttestset()
         seq = ODict("seq1" => "AAAGGG")
         GF  = ODict("feature1" => "some text",
                     "feature2" => "some more text")
@@ -24,6 +28,7 @@ example_msa2 = read("example2.sto", String)
     end
 
     @testset "parse" begin
+        starttestset()
         for msa_str in [example_msa1, example_msa2]
             msa = parse(MSA, msa_str)
             @test length(msa.seq) > 0
@@ -35,6 +40,7 @@ example_msa2 = read("example2.sto", String)
     end
 
     @testset "print" begin
+        starttestset()
         for T in (UInt8, Char)
             msas = [
                 MSA{T}(;
@@ -65,6 +71,7 @@ example_msa2 = read("example2.sto", String)
     end
 
     @testset "write" begin
+        starttestset()
         msa = parse(MSA, example_msa1)
 
         mktemp() do path, io
@@ -82,6 +89,7 @@ example_msa2 = read("example2.sto", String)
     end
 
     @testset "read" begin
+        starttestset()
         msa = parse(MSA, example_msa1)
 
         mktemp() do path, io
