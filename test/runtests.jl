@@ -4,7 +4,8 @@ using OrderedCollections: OrderedDict
 const ODict = OrderedDict
 
 # show which testset is currently running
-showtestset() = println(" "^(2 * Test.get_testset_depth()), "testing ", Test.get_testset().description)
+showtestset() = println(" "^(2 * Test.get_testset_depth()), "testing ",
+                        Test.get_testset().description)
 
 # example Stockholm alignment files
 example_msa1 = read("example1.sto", String)
