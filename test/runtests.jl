@@ -10,6 +10,7 @@ showtestset() = println(" "^(2 * Test.get_testset_depth()), "testing ",
 # example Stockholm alignment files
 example_msa1 = read("example1.sto", String)
 example_msa2 = read("example2.sto", String)
+example_msa2_crlf = read("example2-crlf.sto", String)
 
 @testset verbose=true "BioStockholm" begin
     showtestset()
@@ -31,7 +32,7 @@ example_msa2 = read("example2.sto", String)
 
     @testset "parse" begin
         showtestset()
-        for msa_str in [example_msa1, example_msa2]
+        for msa_str in [example_msa1, example_msa2, example_msa2_crlf]
             msa = parse(MSA, msa_str)
             @test length(msa.seq) > 0
 
@@ -39,6 +40,9 @@ example_msa2 = read("example2.sto", String)
                 @test length(parse(MSA{T}, msa_str).seq) > 0
             end
         end
+
+        # test that CRLF line endings don't cause issues
+        @test_broken parse(MSA, example_msa2) == parse(MSA, example_msa2_crlf)
     end
 
     @testset "print" begin
