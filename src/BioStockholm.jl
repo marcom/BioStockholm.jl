@@ -115,10 +115,10 @@ end
 const stockholm_machine = let
     nl      = re"\r?\n"
     ws      = re"[ \t]+"
-    feature = re"[^ \t\n]+"
-    seqname = re"[^# \t\n][^ \t\n]*"
-    text    = re"[^\n]*"
-    seqdata = re"[^ \t\n]+"
+    feature = re"[^ \t\r\n]+"
+    seqname = re"[^# \t\r\n][^ \t\r\n]*"
+    text    = re"[^\r\n]*"
+    seqdata = re"[^ \t\r\n]+"
 
     line_header = re"# STOCKHOLM 1.0" * nl
     line_end    = re"//" * nl

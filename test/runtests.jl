@@ -42,7 +42,7 @@ example_msa2_crlf = read("example2-crlf.sto", String)
         end
 
         # test that CRLF line endings don't cause issues
-        @test_broken parse(MSA, example_msa2) == parse(MSA, example_msa2_crlf)
+        @test parse(MSA, example_msa2) == parse(MSA, example_msa2_crlf)
     end
 
     @testset "print" begin
