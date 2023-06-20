@@ -15,6 +15,7 @@ example_msa2 = read("example2.sto", String)
 
 @testset verbose=true "BioStockholm" begin
     showtestset()
+    include("aqua.jl")
 
     @testset "constructors" begin
         showtestset()
