@@ -1,6 +1,7 @@
 # BioStockholm.jl
 
 [![Build Status](https://github.com/marcom/BioStockholm.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/marcom/BioStockholm.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 Julia parser for the [Stockholm file
 format](https://en.wikipedia.org/wiki/Stockholm_format) (.sto) used
