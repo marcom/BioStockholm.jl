@@ -5,7 +5,8 @@
 
 Julia parser for the [Stockholm file
 format](https://en.wikipedia.org/wiki/Stockholm_format) (.sto) used
-for multiple sequence alignments (Pfam, Rfam, etc).  This package uses
+for multiple sequence alignments of protein, RNA, or DNA sequences
+(Pfam, Rfam, etc databases).  This package uses
 [Automa.jl](https://github.com/BioJulia/Automa.jl) under the hood to
 generate a finite state machine parser.
 
