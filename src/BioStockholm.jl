@@ -5,7 +5,7 @@ module BioStockholm
 #   https://en.wikipedia.org/wiki/Stockholm_format
 
 import Automa
-import Automa.RegExp: @re_str
+using Automa: @re_str, onenter!, onexit!
 const re = Automa.RegExp
 using OrderedCollections: OrderedDict
 
@@ -120,11 +120,12 @@ const stockholm_machine = let
     nl      = re"\r?\n"
     ws      = re"[ \t]+"
     feature = re"[^ \t\r\n]+"
-    seqname = re"[^# \t\r\n][^ \t\r\n]*"
-    text    = re"[^\r\n]*"
+    # TODO: slash '/' prohibited at beginning of seqname
+    seqname = re"[^#/ \t\r\n][^ \t\r\n]*"
+    text    = re"[^ \t\r\n][^\r\n]*"
     seqdata = re"[^ \t\r\n]+"
 
-    line_header = re"# STOCKHOLM 1.0" * nl
+    line_header = re"# STOCKHOLM 1\.0" * nl
     line_end    = re"//" * nl
     line_GF     = re"#=GF" * ws * feature * ws * text * nl
     line_GC     = re"#=GC" * ws * feature * ws * seqdata * nl
@@ -140,20 +141,20 @@ const stockholm_machine = let
         * line_end
     )
 
-    nl.actions[:enter]      = [:countline]
-    feature.actions[:enter] = [:enter_feature]
-    feature.actions[:exit]  = [:feature]
-    seqname.actions[:enter] = [:enter_seqname]
-    seqname.actions[:exit]  = [:seqname]
-    text.actions[:enter]    = [:enter_text]
-    text.actions[:exit]     = [:text]
-    seqdata.actions[:enter] = [:enter_seqdata]
-    seqdata.actions[:exit]  = [:seqdata]
-    line_GF.actions[:exit]  = [:line_GF]
-    line_GC.actions[:exit]  = [:line_GC]
-    line_GS.actions[:exit]  = [:line_GS]
-    line_GR.actions[:exit]  = [:line_GR]
-    line_seq.actions[:exit] = [:line_seq]
+    onenter!(nl, :countline)
+    onenter!(feature, :enter_feature)
+    onexit!(feature, :feature)
+    onenter!(seqname, :enter_seqname)
+    onexit!(seqname, :seqname)
+    onenter!(text, :enter_text)
+    onexit!(text, :text)
+    onenter!(seqdata, :enter_seqdata)
+    onexit!(seqdata, :seqdata)
+    onexit!(line_GF, :line_GF)
+    onexit!(line_GC, :line_GC)
+    onexit!(line_GS, :line_GS)
+    onexit!(line_GR, :line_GR)
+    onexit!(line_seq, :line_seq)
 
     Automa.compile(stockholm)
 end
@@ -234,7 +235,7 @@ Base.parse(::Type{MSA}, data::Union{String,Vector{UInt8}}) =
 Base.parse(::Type{MSA{T}}, data::Union{String,Vector{UInt8}}) where {T} =
     parse_stockholm(T, data)
 
-const context = Automa.CodeGenContext(generator=:goto, checkbounds=false)
+const context = Automa.CodeGenContext(generator=:goto)
 @eval function parse_stockholm(::Type{T}, data::Union{String,Vector{UInt8}}) where {T}
     # variables for the action code
     sequences  = OrderedDict{String,Vector{T}}()                        # seqname => seqdata
